@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 from typing import Any, Dict, Optional
 
 class BookStoreException(Exception):
-    """کلاس پایه برای تمام خطاهای سفارشی کتابفروشی"""
+    """Base class for all custom bookstore exceptions"""
     def __init__(
         self, 
         message: str, 
@@ -15,7 +15,7 @@ class BookStoreException(Exception):
         super().__init__(self.message)
 
 class AuthenticationError(BookStoreException):
-    """خطاهای مربوط به احراز هویت"""
+    """Authentication related errors"""
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
@@ -24,7 +24,7 @@ class AuthenticationError(BookStoreException):
         )
 
 class AuthorizationError(BookStoreException):
-    """خطاهای مربوط به سطح دسترسی"""
+    """Access level related errors"""
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
@@ -33,7 +33,7 @@ class AuthorizationError(BookStoreException):
         )
 
 class ResourceNotFoundError(BookStoreException):
-    """خطاهای مربوط به پیدا نشدن منابع"""
+    """Resource not found related errors"""
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
@@ -42,7 +42,7 @@ class ResourceNotFoundError(BookStoreException):
         )
 
 class ValidationError(BookStoreException):
-    """خطاهای مربوط به اعتبارسنجی داده‌ها"""
+    """Data validation related errors"""
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
@@ -51,7 +51,7 @@ class ValidationError(BookStoreException):
         )
 
 class InsufficientFundsError(BookStoreException):
-    """خطاهای مربوط به کمبود موجودی"""
+    """Insufficient balance related errors"""
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
@@ -60,7 +60,7 @@ class InsufficientFundsError(BookStoreException):
         )
 
 class SubscriptionError(BookStoreException):
-    """خطاهای مربوط به اشتراک"""
+    """Subscription related errors"""
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
@@ -69,7 +69,7 @@ class SubscriptionError(BookStoreException):
         )
 
 class ReservationError(BookStoreException):
-    """خطاهای مربوط به رزرو"""
+    """Reservation related errors"""
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,
@@ -78,7 +78,7 @@ class ReservationError(BookStoreException):
         )
 
 class DatabaseError(BookStoreException):
-    """خطاهای مربوط به پایگاه داده"""
+    """Database related errors"""
     def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
         super().__init__(
             message=message,

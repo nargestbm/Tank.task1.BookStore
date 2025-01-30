@@ -4,7 +4,7 @@ from exceptions import BookStoreException
 import logging
 from datetime import datetime
 
-# راه‌اندازی لاگر
+# Set up logger
 logging.basicConfig(
     filename='error.log',
     level=logging.ERROR,
@@ -16,7 +16,7 @@ async def error_handler(request: Request, call_next):
     try:
         return await call_next(request)
     except BookStoreException as exc:
-        # ثبت خطا در لاگ
+        # Log error
         logger.error(
             f"BookStore Error: {exc.message}",
             extra={
@@ -38,7 +38,7 @@ async def error_handler(request: Request, call_next):
             }
         )
     except Exception as exc:
-        # ثبت خطاهای پیش‌بینی نشده
+        # Log unexpected errors
         logger.error(
             f"Unexpected Error: {str(exc)}",
             extra={
@@ -53,7 +53,7 @@ async def error_handler(request: Request, call_next):
             status_code=500,
             content={
                 "error": True,
-                "message": "خطای داخلی سرور",
+                "message": "Internal Server Error",
                 "path": request.url.path,
                 "timestamp": datetime.now().isoformat()
             }

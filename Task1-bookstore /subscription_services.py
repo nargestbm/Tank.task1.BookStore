@@ -8,12 +8,12 @@ class SubscriptionService:
     def __init__(self, pool: asyncpg.Pool):
         self.pool = pool
         
-        # قیمت‌های اشتراک
-        self.PLUS_PRICE = Decimal('50000')  # ماهانه 50,000 تومان
-        self.PREMIUM_PRICE = Decimal('200000')  # ماهانه 200,000 تومان
+        # Subscription prices
+        self.PLUS_PRICE = Decimal('50000')  # 50,000 tomans monthly
+        self.PREMIUM_PRICE = Decimal('200000')  # 200,000 tomans monthly
 
     async def get_subscription_info(self, customer_id: int) -> dict:
-        """دریافت اطلاعات اشتراک کاربر"""
+        """Get customer subscription information"""
         async with self.pool.acquire() as conn:
             customer = await conn.fetchrow(
                 """
@@ -25,45 +25,45 @@ class SubscriptionService:
             )
             
             if not customer:
-                raise HTTPException(status_code=404, detail="مشتری یافت نشد")
+                raise HTTPException(status_code=404, detail="Customer not found")
                 
             return dict(customer)
 
     async def upgrade_subscription(self, customer_id: int, new_model: str, months: int = 1) -> dict:
-        """ارتقا یا تمدید اشتراک"""
+        """Upgrade or renew subscription"""
         if new_model not in ['plus', 'premium']:
-            raise HTTPException(status_code=400, detail="مدل اشتراک نامعتبر است")
+            raise HTTPException(status_code=400, detail="Invalid subscription model")
             
         price = self.PLUS_PRICE if new_model == 'plus' else self.PREMIUM_PRICE
         total_price = price * months
         
         async with self.pool.acquire() as conn:
             async with conn.transaction():
-                # بررسی موجودی کیف پول
+                # Check wallet balance
                 customer = await conn.fetchrow(
                     "SELECT wallet, subscription_end_time FROM customers WHERE customer_id = $1",
                     customer_id
                 )
                 
                 if not customer:
-                    raise HTTPException(status_code=404, detail="مشتری یافت نشد")
+                    raise HTTPException(status_code=404, detail="Customer not found")
                     
                 if customer['wallet'] < total_price:
                     raise HTTPException(
                         status_code=400, 
-                        detail=f"موجودی کیف پول کافی نیست. موجودی فعلی: {customer['wallet']} تومان"
+                        detail=f"Insufficient wallet balance. Current balance: {customer['wallet']} tomans"
                     )
                 
-                # محاسبه زمان پایان اشتراک جدید
+                # Calculate new subscription end time
                 current_time = datetime.now()
                 if customer['subscription_end_time'] and customer['subscription_end_time'] > current_time:
-                    # اگر اشتراک فعال دارد، به آن اضافه می‌شود
+                    # If active subscription exists, add to it
                     new_end_time = customer['subscription_end_time'] + timedelta(days=30 * months)
                 else:
-                    # اشتراک جدید از الان شروع می‌شود
+                    # New subscription starts now
                     new_end_time = current_time + timedelta(days=30 * months)
                 
-                # بروزرسانی اطلاعات مشتری
+                # Update customer information
                 updated_customer = await conn.fetchrow(
                     """
                     UPDATE customers 
@@ -79,9 +79,9 @@ class SubscriptionService:
                 return dict(updated_customer)
 
     async def add_wallet_balance(self, customer_id: int, amount: Decimal) -> dict:
-        """افزایش موجودی کیف پول"""
+        """Increase wallet balance"""
         if amount <= 0:
-            raise HTTPException(status_code=400, detail="مبلغ باید بیشتر از صفر باشد")
+            raise HTTPException(status_code=400, detail="Amount must be greater than zero")
             
         async with self.pool.acquire() as conn:
             customer = await conn.fetchrow(
@@ -95,12 +95,12 @@ class SubscriptionService:
             )
             
             if not customer:
-                raise HTTPException(status_code=404, detail="مشتری یافت نشد")
+                raise HTTPException(status_code=404, detail="Customer not found")
                 
             return dict(customer)
 
     async def get_wallet_balance(self, customer_id: int) -> Decimal:
-        """دریافت موجودی کیف پول"""
+        """Get wallet balance"""
         async with self.pool.acquire() as conn:
             balance = await conn.fetchval(
                 "SELECT wallet FROM customers WHERE customer_id = $1",
@@ -108,6 +108,6 @@ class SubscriptionService:
             )
             
             if balance is None:
-                raise HTTPException(status_code=404, detail="مشتری یافت نشد")
+                raise HTTPException(status_code=404, detail="Customer not found")
                 
             return balance

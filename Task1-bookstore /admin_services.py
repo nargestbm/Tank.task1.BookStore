@@ -8,9 +8,9 @@ class AdminService:
         self.pool = pool
     
     async def revoke_user_token(self, admin_username: str, target_username: str) -> bool:
-        """لغو توکن یک کاربر توسط ادمین"""
+        """Revoke a user's token by admin"""
         async with self.pool.acquire() as conn:
-            # بررسی دسترسی ادمین
+            # Check admin access
             admin = await conn.fetchrow(
                 "SELECT role FROM users WHERE username = $1",
                 admin_username
@@ -19,10 +19,10 @@ class AdminService:
             if not admin or admin['role'] != 'admin':
                 raise HTTPException(
                     status_code=403,
-                    detail="شما دسترسی لازم برای این عملیات را ندارید"
+                    detail="You don't have the required permissions for this operation"
                 )
             
-            # بررسی وجود کاربر هدف
+            # Check if target user exists
             target = await conn.fetchrow(
                 "SELECT role FROM users WHERE username = $1",
                 target_username
@@ -31,16 +31,16 @@ class AdminService:
             if not target:
                 raise HTTPException(
                     status_code=404,
-                    detail="کاربر مورد نظر یافت نشد"
+                    detail="Target user not found"
                 )
                 
             if target['role'] == 'admin':
                 raise HTTPException(
                     status_code=403,
-                    detail="امکان لغو توکن ادمین‌ها وجود ندارد"
+                    detail="Cannot revoke admin tokens"
                 )
             
-            # لغو توکن با ثبت در جدول revoked_tokens
+            # Revoke token by recording in revoked_tokens table
             await conn.execute(
                 """
                 INSERT INTO revoked_tokens (username, revoked_at, revoked_by)
@@ -52,9 +52,9 @@ class AdminService:
             return True
     
     async def end_reservation(self, admin_username: str, reservation_id: int) -> bool:
-        """پایان دادن به یک رزرو قبل از موعد"""
+        """End a reservation before its scheduled time"""
         async with self.pool.acquire() as conn:
-            # بررسی دسترسی ادمین
+            # Check admin access
             admin = await conn.fetchrow(
                 "SELECT role FROM users WHERE username = $1",
                 admin_username
@@ -63,10 +63,10 @@ class AdminService:
             if not admin or admin['role'] != 'admin':
                 raise HTTPException(
                     status_code=403,
-                    detail="شما دسترسی لازم برای این عملیات را ندارید"
+                    detail="You don't have the required permissions for this operation"
                 )
             
-            # بررسی وجود رزرو
+            # Check if reservation exists
             reservation = await conn.fetchrow(
                 """
                 SELECT r.*, b.units 
@@ -80,17 +80,17 @@ class AdminService:
             if not reservation:
                 raise HTTPException(
                     status_code=404,
-                    detail="رزرو مورد نظر یافت نشد"
+                    detail="Reservation not found"
                 )
             
             if reservation['end_time'] <= datetime.now():
                 raise HTTPException(
                     status_code=400,
-                    detail="این رزرو قبلاً به پایان رسیده است"
+                    detail="This reservation has already ended"
                 )
             
             async with conn.transaction():
-                # پایان دادن به رزرو
+                # End the reservation
                 await conn.execute(
                     """
                     UPDATE reservations 
@@ -101,7 +101,7 @@ class AdminService:
                     reservation_id
                 )
                 
-                # افزایش موجودی کتاب
+                # Increase book inventory
                 await conn.execute(
                     """
                     UPDATE books
@@ -114,9 +114,9 @@ class AdminService:
             return True
     
     async def get_book_status(self, admin_username: str, book_id: int) -> dict:
-        """دریافت وضعیت کتاب شامل رزروهای فعلی و صف انتظار"""
+        """Get book status including current reservations and waiting queue"""
         async with self.pool.acquire() as conn:
-            # بررسی دسترسی ادمین
+            # Check admin access
             admin = await conn.fetchrow(
                 "SELECT role FROM users WHERE username = $1",
                 admin_username
@@ -125,10 +125,10 @@ class AdminService:
             if not admin or admin['role'] != 'admin':
                 raise HTTPException(
                     status_code=403,
-                    detail="شما دسترسی لازم برای این عملیات را ندارید"
+                    detail="You don't have the required permissions for this operation"
                 )
             
-            # دریافت اطلاعات کتاب
+            # Get book information
             book = await conn.fetchrow(
                 "SELECT * FROM books WHERE book_id = $1",
                 book_id
@@ -137,10 +137,10 @@ class AdminService:
             if not book:
                 raise HTTPException(
                     status_code=404,
-                    detail="کتاب مورد نظر یافت نشد"
+                    detail="Book not found"
                 )
             
-            # دریافت رزروهای فعلی
+            # Get active reservations
             active_reservations = await conn.fetch(
                 """
                 SELECT r.*, u.username, u.email 
@@ -153,7 +153,7 @@ class AdminService:
                 book_id
             )
             
-            # دریافت صف انتظار
+            # Get waiting list
             waiting_list = await conn.fetch(
                 """
                 SELECT q.*, u.username, u.email, c.subscription_model

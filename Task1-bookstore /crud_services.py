@@ -20,7 +20,7 @@ class CityService:
                 )
                 return dict(city)
             except asyncpg.UniqueViolationError:
-                raise HTTPException(status_code=400, detail="این شهر قبلاً ثبت شده است")
+                raise HTTPException(status_code=400, detail="This city has already been registered")
 
     async def get_cities(self, skip: int = 0, limit: int = 10) -> List[dict]:
         async with self.pool.acquire() as conn:
@@ -45,7 +45,7 @@ class CityService:
     async def update_city(self, city_id: int, name: str = None, 
                          province: str = None, country: str = None) -> Optional[dict]:
         async with self.pool.acquire() as conn:
-            # ساخت کوئری داینامیک برای آپدیت
+            # Build dynamic update query
             updates = []
             values = []
             if name is not None:
@@ -71,12 +71,12 @@ class CityService:
             
             city = await conn.fetchrow(query, *values)
             if not city:
-                raise HTTPException(status_code=404, detail="شهر مورد نظر یافت نشد")
+                raise HTTPException(status_code=404, detail="City not found")
             return dict(city)
 
     async def delete_city(self, city_id: int) -> bool:
         async with self.pool.acquire() as conn:
-            # بررسی استفاده از شهر در جدول نویسندگان
+            # Check city usage in authors table
             author_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM authors WHERE city_id = $1",
                 city_id
@@ -84,7 +84,7 @@ class CityService:
             if author_count > 0:
                 raise HTTPException(
                     status_code=400,
-                    detail="این شهر به نویسندگان مرتبط است و نمی‌تواند حذف شود"
+                    detail="This city is associated with authors and cannot be deleted"
                 )
 
             result = await conn.execute(
@@ -110,7 +110,7 @@ class GenreService:
                 )
                 return dict(genre)
             except asyncpg.UniqueViolationError:
-                raise HTTPException(status_code=400, detail="این ژانر قبلاً ثبت شده است")
+                raise HTTPException(status_code=400, detail="This genre has already been registered")
 
     async def get_genres(self, skip: int = 0, limit: int = 10) -> List[dict]:
         async with self.pool.acquire() as conn:
@@ -136,7 +136,7 @@ class GenreService:
                           name: Optional[str] = None, 
                           description: Optional[str] = None) -> dict:
         async with self.pool.acquire() as conn:
-            # ساخت کوئری داینامیک برای آپدیت
+            # Build dynamic update query
             updates = []
             values = []
             if name is not None:
@@ -160,14 +160,14 @@ class GenreService:
             try:
                 genre = await conn.fetchrow(query, *values)
                 if not genre:
-                    raise HTTPException(status_code=404, detail="ژانر مورد نظر یافت نشد")
+                    raise HTTPException(status_code=404, detail="Genre not found")
                 return dict(genre)
             except asyncpg.UniqueViolationError:
-                raise HTTPException(status_code=400, detail="این نام ژانر قبلاً ثبت شده است")
+                raise HTTPException(status_code=400, detail="This genre name has already been registered")
 
     async def delete_genre(self, genre_id: int) -> bool:
         async with self.pool.acquire() as conn:
-            # بررسی استفاده از ژانر در جدول کتاب‌ها
+            # Check genre usage in books table
             book_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM books WHERE genre = $1",
                 genre_id
@@ -175,7 +175,7 @@ class GenreService:
             if book_count > 0:
                 raise HTTPException(
                     status_code=400,
-                    detail="این ژانر به کتاب‌ها مرتبط است و نمی‌تواند حذف شود"
+                    detail="This genre is associated with books and cannot be deleted"
                 )
 
             result = await conn.execute(
@@ -193,21 +193,21 @@ class AuthorService:
                           goodreads_link: Optional[str] = None,
                           bio: Optional[str] = None) -> dict:
         async with self.pool.acquire() as conn:
-            # بررسی وجود کاربر
+            # Check user existence
             user = await conn.fetchrow(
                 "SELECT * FROM users WHERE user_id = $1",
                 user_id
             )
             if not user:
-                raise HTTPException(status_code=404, detail="کاربر مورد نظر یافت نشد")
+                raise HTTPException(status_code=404, detail="User not found")
 
-            # بررسی وجود شهر
+            # Check city existence
             city = await conn.fetchrow(
                 "SELECT * FROM cities WHERE city_id = $1",
                 city_id
             )
             if not city:
-                raise HTTPException(status_code=404, detail="شهر مورد نظر یافت نشد")
+                raise HTTPException(status_code=404, detail="City not found")
 
             try:
                 author = await conn.fetchrow(
@@ -220,7 +220,7 @@ class AuthorService:
                     user_id, city_id, bank_account_number, goodreads_link, bio
                 )
                 
-                # تغییر نقش کاربر به نویسنده
+                # Change user role to author
                 await conn.execute(
                     """
                     UPDATE users 
@@ -238,7 +238,7 @@ class AuthorService:
             except asyncpg.UniqueViolationError:
                 raise HTTPException(
                     status_code=400,
-                    detail="این کاربر قبلاً به عنوان نویسنده ثبت شده است"
+                    detail="This user is already registered as an author"
                 )
 
     async def get_authors(self, skip: int = 0, limit: int = 10) -> List[dict]:
@@ -280,18 +280,18 @@ class AuthorService:
                           goodreads_link: Optional[str] = None,
                           bio: Optional[str] = None) -> dict:
         async with self.pool.acquire() as conn:
-            # ساخت کوئری داینامیک برای آپدیت
+            # Build dynamic update query
             updates = []
             values = []
             
             if city_id is not None:
-                # بررسی وجود شهر
+                # Check city existence
                 city = await conn.fetchrow(
                     "SELECT * FROM cities WHERE city_id = $1",
                     city_id
                 )
                 if not city:
-                    raise HTTPException(status_code=404, detail="شهر مورد نظر یافت نشد")
+                    raise HTTPException(status_code=404, detail="City not found")
                 updates.append("city_id = $1")
                 values.append(city_id)
                 
@@ -320,14 +320,14 @@ class AuthorService:
             
             author = await conn.fetchrow(query, *values)
             if not author:
-                raise HTTPException(status_code=404, detail="نویسنده مورد نظر یافت نشد")
+                raise HTTPException(status_code=404, detail="Author not found")
             
-            # دریافت اطلاعات کامل نویسنده
+            # Get complete author information
             return await self.get_author(author_id)
 
     async def delete_author(self, author_id: int) -> bool:
         async with self.pool.acquire() as conn:
-            # بررسی وجود کتاب‌های مرتبط با نویسنده
+            # Check for books associated with the author
             books = await conn.fetchval(
                 """
                 SELECT COUNT(*) 
@@ -339,25 +339,25 @@ class AuthorService:
             if books > 0:
                 raise HTTPException(
                     status_code=400,
-                    detail="این نویسنده دارای کتاب‌های منتشر شده است و نمی‌تواند حذف شود"
+                    detail="This author has published books and cannot be deleted"
                 )
 
-            # دریافت user_id نویسنده قبل از حذف
+            # Get author's user_id before deletion
             author = await conn.fetchrow(
                 "SELECT user_id FROM authors WHERE author_id = $1",
                 author_id
             )
             if not author:
-                raise HTTPException(status_code=404, detail="نویسنده مورد نظر یافت نشد")
+                raise HTTPException(status_code=404, detail="Author not found")
 
             async with conn.transaction():
-                # حذف نویسنده
+                # Delete author
                 result = await conn.execute(
                     "DELETE FROM authors WHERE author_id = $1",
                     author_id
                 )
                 
-                # تغییر نقش کاربر به customer (در صورتی که نویسنده حذف شد)
+                # Change user role to customer (if author was deleted)
                 if 'DELETE 1' in result:
                     await conn.execute(
                         """

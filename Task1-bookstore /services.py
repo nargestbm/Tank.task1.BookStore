@@ -11,26 +11,26 @@ class ReservationService:
 
     async def can_make_reservation(self, customer_id: int, book_id: int, days: int) -> bool:
         async with self.pool.acquire() as conn:
-            # بررسی وضعیت عضویت کاربر
+            # Check customer subscription status
             customer = await conn.fetchrow(
                 "SELECT subscription_model, subscription_end_time FROM customers WHERE customer_id = $1",
                 customer_id
             )
             
             if not customer:
-                raise HTTPException(status_code=404, detail="مشتری یافت نشد")
+                raise HTTPException(status_code=404, detail="Customer not found")
 
             if customer['subscription_model'] == 'free':
-                raise HTTPException(status_code=403, detail="کاربران رایگان امکان رزرو ندارند")
+                raise HTTPException(status_code=403, detail="Free users cannot make reservations")
 
             max_days = 7 if customer['subscription_model'] == 'plus' else 14
             if days > max_days:
                 raise HTTPException(
                     status_code=400, 
-                    detail=f"حداکثر زمان رزرو برای شما {max_days} روز است"
+                    detail=f"Maximum reservation time for you is {max_days} days"
                 )
 
-            # بررسی تعداد رزروهای همزمان
+            # Check simultaneous reservations
             current_reservations = await conn.fetch(
                 """
                 SELECT COUNT(*) as count 
@@ -43,26 +43,26 @@ class ReservationService:
             if current_reservations[0]['count'] >= max_simultaneous:
                 raise HTTPException(
                     status_code=400,
-                    detail=f"شما نمی‌توانید بیش از {max_simultaneous} کتاب را همزمان رزرو کنید"
+                    detail=f"You cannot reserve more than {max_simultaneous} books simultaneously"
                 )
 
             return True
 
     async def calculate_price(self, customer_id: int, days: int) -> float:
-        base_price = 1000 * days  # هر روز 1000 تومان
+        base_price = 1000 * days  # 1000 tomans per day
         
         async with self.pool.acquire() as conn:
-            # بررسی تخفیف‌های مشتری
+            # Check customer discounts
             customer = await conn.fetchrow(
                 "SELECT subscription_model FROM customers WHERE customer_id = $1",
                 customer_id
             )
 
             if customer['subscription_model'] == 'premium':
-                base_price = 2000 * days  # هر روز 2000 تومان برای کاربران Premium
+                base_price = 2000 * days  # 2000 tomans per day for Premium users
             
             if customer['subscription_model'] == 'plus':
-                # بررسی تعداد کتاب‌های خوانده شده در ماه گذشته
+                # Check number of books read in the last month
                 month_books = await conn.fetchval(
                     """
                     SELECT COUNT(DISTINCT book_id) 
@@ -74,9 +74,9 @@ class ReservationService:
                 )
                 
                 if month_books >= 3:
-                    base_price *= 0.7  # 30% تخفیف
+                    base_price *= 0.7  # 30% discount
                 
-                # بررسی مبلغ پرداختی در دو ماه گذشته
+                # Check amount paid in the last two months
                 total_paid = await conn.fetchval(
                     """
                     SELECT SUM(price) 
@@ -88,29 +88,29 @@ class ReservationService:
                 )
                 
                 if total_paid and total_paid >= 300000:
-                    base_price = 0  # رایگان
+                    base_price = 0  # Free
             
             return base_price
 
     async def create_reservation(self, customer_id: int, book_id: int, days: int):
         if not await self.can_make_reservation(customer_id, book_id, days):
-            raise HTTPException(status_code=403, detail="امکان رزرو وجود ندارد")
+            raise HTTPException(status_code=403, detail="Reservation not possible")
 
         async with self.pool.acquire() as conn:
-            # بررسی موجودی کتاب
+            # Check book availability
             book = await conn.fetchrow(
                 "SELECT units FROM books WHERE book_id = $1",
                 book_id
             )
 
             if not book:
-                raise HTTPException(status_code=404, detail="کتاب یافت نشد")
+                raise HTTPException(status_code=404, detail="Book not found")
 
             if book['units'] > 0:
-                # رزرو فوری
+                # Instant reservation
                 price = await self.calculate_price(customer_id, days)
                 
-                # بررسی موجودی کیف پول
+                # Check wallet balance
                 wallet = await conn.fetchval(
                     "SELECT wallet FROM customers WHERE customer_id = $1",
                     customer_id
@@ -119,10 +119,10 @@ class ReservationService:
                 if wallet < price:
                     raise HTTPException(
                         status_code=400,
-                        detail="موجودی کیف پول کافی نیست"
+                        detail="Insufficient wallet balance"
                     )
 
-                # ایجاد رزرو و کم کردن موجودی
+                # Create reservation and deduct balance
                 start_time = datetime.now()
                 end_time = start_time + timedelta(days=days)
                 
@@ -157,7 +157,7 @@ class ReservationService:
                 }
             
             else:
-                # اضافه کردن به صف
+                # Add to queue
                 customer = await conn.fetchrow(
                     "SELECT subscription_model FROM customers WHERE customer_id = $1",
                     customer_id

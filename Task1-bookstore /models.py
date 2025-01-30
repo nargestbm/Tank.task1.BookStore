@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 from enum import Enum
 
-# مدل‌های قبلی
+# Previous models
 class SubscriptionType(str, Enum):
     FREE = "free"
     PLUS = "plus"
@@ -26,7 +26,7 @@ class QueuePosition(BaseModel):
     position: int
     estimated_wait: Optional[str]
 
-# مدل‌های جدید
+# New models
 class CityBase(BaseModel):
     name: str
     province: str
@@ -67,5 +67,5 @@ class AuthorUpdate(BaseModel):
 
 class AuthorResponse(AuthorBase):
     author_id: int
-    user: dict  # اطلاعات کاربری نویسنده
-    city: dict  # اطلاعات شهر نویسنده
+    user: dict  # Author's user information
+    city: dict  # Author's city information
