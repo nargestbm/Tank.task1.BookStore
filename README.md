@@ -1,171 +1,158 @@
-# BookStore Management System
+# FastAPI Bookstore API
 
-## Overview
-A comprehensive FastAPI-based bookstore management system that handles user authentication, book reservations, subscription management, and administrative operations. The system implements a sophisticated user role system, wallet functionality, and a queue-based reservation system.
+A FastAPI-based RESTful API for managing a digital bookstore with features including user authentication, book reservations, subscription management, and administrative controls.
 
 ## Features
 
-### User Management
-- User registration and authentication with JWT tokens
-- Two-factor authentication using OTP
-- Role-based access control (Customer, Author, Admin)
-- User profile management
+- User Authentication with OTP verification
+- Book management and reservations
+- Tiered subscription system (Free, Plus, Premium)
+- Wallet system for payments
+- Queue management for book reservations
+- Admin controls for user and reservation management
+- City, Genre, and Author management
 
-### Book Management
-- Comprehensive book catalog with detailed information
-- ISBN-based book tracking
-- Multi-author support
-- Genre categorization
-- Inventory management
+## Prerequisites
 
-### Reservation System
-- Smart queue-based reservation system
-- Priority-based allocation for premium users
-- Flexible reservation duration based on subscription type
-- Automatic inventory management
+- Python 3.7+
+- PostgreSQL 12+
+- pip (Python package manager)
 
-### Subscription System
-- Three-tier subscription model (Free, Plus, Premium)
-- Subscription benefits:
-  - Plus: Up to 7 days reservation, 5 simultaneous books
-  - Premium: Up to 14 days reservation, 10 simultaneous books
-- Automatic renewal system
-- Special discounts for frequent readers
+## Installation
 
-### Payment and Wallet
-- Built-in wallet system
-- Secure transaction handling
-- Automatic price calculation based on subscription type
-- Special discounts for Plus subscribers
-
-### Author Management
-- Author profile management
-- City-based author tracking
-- Goodreads integration support
-- Banking information management
-
-### Administrative Features
-- Token revocation
-- Reservation management
-- Book status monitoring
-- Comprehensive error handling
-
-## Technical Stack
-
-### Backend
-- FastAPI
-- PostgreSQL
-- asyncpg for async database operations
-- JWT for authentication
-- Pydantic for data validation
-
-### Security
-- OAuth2 implementation
-- Password hashing with bcrypt
-- Two-factor authentication
-- Role-based access control
-
-## Database Schema
-
-### Core Tables
-```sql
-users
-- user_id (PK)
-- username
-- email
-- password
-- role
-
-books
-- book_id (PK)
-- title
-- isbn
-- price
-- genre
-- description
-- units
-
-customers
-- customer_id (PK)
-- user_id (FK)
-- subscription_model
-- subscription_end_time
-- wallet
-
-authors
-- author_id (PK)
-- user_id (FK)
-- city
-- goodreads_link
-- bank_account_number
-- bio
-```
-
-## Setup and Installation
-
-1. Clone the repository
+1. Clone the repository:
 ```bash
-git clone https://github.com/nargestbm/Tank.task1.BookStore.git
-cd Tank.task1.BookStore
+git clone <repository-url>
+cd bookstore-api
 ```
 
-2. Create and activate virtual environment
+2. Create a virtual environment and activate it:
 ```bash
 python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# On Windows
+.\venv\Scripts\activate
+# On Unix or MacOS
+source venv/bin/activate
 ```
 
-3. Install dependencies
+3. Install required packages:
 ```bash
-pip install -r requirements.txt
+pip install fastapi uvicorn[standard] asyncpg python-jose[cryptography] passlib[bcrypt] pydantic[email] python-multipart
 ```
 
-4. Set up PostgreSQL database
+## Database Setup
+
+1. Create a new PostgreSQL database:
+```sql
+CREATE DATABASE bookstore_db;
+```
+
+2. Import your existing PostgreSQL tables using the SQL files:
 ```bash
-# Create database
-createdb bookstore_db
-
-# Run SQL scripts
-psql -d bookstore_db -f database/schema.sql
+psql -U postgres -d bookstore_db -f path/to/your/sql/files.sql
 ```
 
-5. Configure environment variables
-```bash
-cp .env.example .env
-# Edit .env with your database credentials and JWT secret
+3. Update database connection settings in `main.py` if needed:
+```python
+async def init_db():
+    return await asyncpg.create_pool(
+        user="postgres",
+        password="1497",
+        database="bookstore_db",
+        host="localhost"
+    )
 ```
 
-6. Run the application
+## Running the Application
+
+1. Start the FastAPI server:
 ```bash
 uvicorn main:app --reload
 ```
 
-## API Documentation
+The API will be available at `http://localhost:8000`
 
-After running the application, access the API documentation at:
+2. Access the interactive API documentation:
 - Swagger UI: `http://localhost:8000/docs`
 - ReDoc: `http://localhost:8000/redoc`
 
+## API Endpoints
+
+### Authentication
+- POST `/users/` - Create new user
+- POST `/login/` - Login with username/password
+- POST `/verify-otp/` - Verify OTP and get access token
+
+### Books
+- POST `/books/` - Create new book (Admin only)
+- GET `/books/` - Get all books
+
+### Reservations
+- POST `/reservations/` - Create new reservation
+- GET `/admin/book-status/{book_id}` - Get book reservation status (Admin only)
+- POST `/admin/end-reservation/{reservation_id}` - End reservation (Admin only)
+
+### Subscription
+- POST `/subscription/upgrade/` - Upgrade subscription
+- GET `/subscription/info/` - Get subscription information
+- POST `/wallet/charge/` - Add funds to wallet
+- GET `/wallet/balance/` - Get wallet balance
+
+### Admin Controls
+- POST `/admin/revoke-token/{username}` - Revoke user token
+- GET `/admin/book-status/{book_id}` - Get book status
+
+### Cities, Genres, and Authors
+- Complete CRUD operations for managing cities, genres, and authors
+
+## Project Structure
+
+```
+bookstore-api/
+├── main.py                 # FastAPI application and routes
+├── auth.py                 # Authentication logic
+├── services.py            # Reservation service
+├── admin_services.py      # Admin functionality
+├── subscription_services.py # Subscription management
+├── crud_services.py       # CRUD operations for cities, genres, authors
+├── models.py              # Pydantic models
+├── exceptions.py          # Custom exceptions
+└── middleware.py          # Error handling middleware
+```
+
 ## Error Handling
 
-The system implements comprehensive error handling with custom exceptions:
-- AuthenticationError
-- AuthorizationError
-- ResourceNotFoundError
-- ValidationError
-- InsufficientFundsError
-- SubscriptionError
-- ReservationError
-- DatabaseError
+The application uses custom exceptions defined in `exceptions.py` and handles them through the middleware in `middleware.py`. Errors are logged to `error.log`.
+
+## Security
+
+- JWT-based authentication
+- OTP verification for login
+- Role-based access control
+- Token revocation capabilities
+
+## Subscription Tiers
+
+1. Free
+   - Cannot make reservations
+   - Basic access to book catalog
+
+2. Plus (50,000 tomans monthly)
+   - Up to 5 simultaneous reservations
+   - Maximum 7-day reservation period
+   - Discount after reading 3 books per month
+
+3. Premium (200,000 tomans monthly)
+   - Up to 10 simultaneous reservations
+   - Maximum 14-day reservation period
+   - Priority in reservation queue
 
 ## Contributing
 
 1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a new Pull Request
 
-## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
