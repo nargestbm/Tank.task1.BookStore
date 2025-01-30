@@ -1,4 +1,4 @@
-# BookStore Management System
+BookStore Management System
 ## OverviewA comprehensive FastAPI-based bookstore management system that handles user authentication, book reservations, subscription management, and administrative operations. The system implements a sophisticated user role system, wallet functionality, and a queue-based reservation system.
 ## Features
 ### User Management
