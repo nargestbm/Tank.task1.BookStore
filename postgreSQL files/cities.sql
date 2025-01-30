@@ -1,0 +1,7 @@
+CREATE TABLE cities (
+    city_id SERIAL PRIMARY KEY,
+    name VARCHAR(100) NOT NULL,
+    province VARCHAR(100),
+    country VARCHAR(100) DEFAULT 'Iran',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
